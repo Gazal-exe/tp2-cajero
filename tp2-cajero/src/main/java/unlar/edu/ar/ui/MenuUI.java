@@ -37,9 +37,9 @@ public class MenuUI {
             // Validamos ingreso antes de entrar al menú de esa cuenta
             try {
                 cajeroService.consultarSaldo(cuentaActual); // Usamos una consulta rápida para validar existencia/estado
-                System.out.println("✅ Sesión iniciada.");
+                System.out.println("Sesión iniciada.");
             } catch (Exception e) {
-                System.out.println("❌ ACCESO DENEGADO: " + e.getMessage());
+                System.out.println("ACCESO DENEGADO: " + e.getMessage());
                 continue; // Vuelve a pedir cuenta
             }
 
@@ -61,7 +61,7 @@ public class MenuUI {
                         case 5 -> verHistorial(cuentaActual);
                         case 0 -> System.out.println("Cerrando sesión de la cuenta " + cuentaActual + "...");
                         default -> {
-                            System.out.println("❌ Opción inválida.");
+                            System.out.println("Opción inválida.");
                             continue;
                         }
                     }
@@ -71,10 +71,10 @@ public class MenuUI {
                     }
 
                 } catch (InputMismatchException e) {
-                    System.out.println("❌ ERROR: Use solo números.");
+                    System.out.println("ERROR: Use solo números.");
                     scanner.nextLine();
                 } catch (Exception e) {
-                    System.out.println("⚠️ ATENCIÓN: " + e.getMessage());
+                    System.out.println("ATENCIÓN: " + e.getMessage());
                     opcion = gestionarContinuacion();
                 }
             }
@@ -117,7 +117,7 @@ public class MenuUI {
         double monto = scanner.nextDouble();
         scanner.nextLine();
         cajeroService.depositar(cuenta, monto);
-        System.out.println("✅ Depósito exitoso.");
+        System.out.println("Depósito exitoso.");
     }
 
     private void realizarExtraccion(String cuenta) throws Exception {
@@ -125,7 +125,7 @@ public class MenuUI {
         double monto = scanner.nextDouble();
         scanner.nextLine();
         cajeroService.extraer(cuenta, monto);
-        System.out.println("✅ Por favor, retire su dinero.");
+        System.out.println("Por favor, retire su dinero.");
     }
 
     private void realizarTransferencia(String cuentaOrigen) throws Exception {
@@ -135,12 +135,12 @@ public class MenuUI {
         double monto = scanner.nextDouble();
         scanner.nextLine();
         cajeroService.transferir(cuentaOrigen, cuentaDestino, monto);
-        System.out.println("✅ Transferencia realizada.");
+        System.out.println("Transferencia realizada.");
     }
 
     private void consultarSaldo(String cuenta) throws Exception {
         double saldo = cajeroService.consultarSaldo(cuenta);
-        System.out.println("💰 Su saldo actual es: " + formatearMoneda(saldo));
+        System.out.println("Su saldo actual es: " + formatearMoneda(saldo));
     }
 
     private void verHistorial(String cuenta) throws Exception {
