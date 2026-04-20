@@ -6,41 +6,42 @@ import unlar.edu.ar.model.TipoTransaccion;
 import unlar.edu.ar.model.Transaccion;
 import unlar.edu.ar.exception.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class CajeroService {
 
-    // Nuestro "banco de datos" en memoria
+    // banco de datos en memoria
     private Map<String, CuentaBancaria> cuentas;
+    
+    // control de limites diarios 
+    private Map<String, Double> extraccionesDiarias;
+    private LocalDate diaActual;
 
     public CajeroService() {
         this.cuentas = new HashMap<>();
+        this.extraccionesDiarias = new HashMap<>();
+        this.diaActual = LocalDate.now();
     }
 
-    // Metodo para cargar cuentas al inicio del dia (como pide el Main)
     public void agregarCuenta(CuentaBancaria cuenta) {
         cuentas.put(cuenta.getNumeroCuenta(), cuenta);
     }
 
-    // valida cuentabancaria y estado, y devuelve la cuenta si todo ok. Si no, tira
-    // la excepcion correspondiente
     private CuentaBancaria validarIngreso(String numeroCuenta) throws CuentaInactivaException {
         CuentaBancaria cuenta = cuentas.get(numeroCuenta);
         if (cuenta == null) {
             throw new IllegalArgumentException("La cuenta número " + numeroCuenta + " no existe.");
         }
-        // CORRECCIÓN AQUÍ: Si es igual a INACTIVA, rebota.
         if (cuenta.getEstado() == EstadoCuenta.INACTIVA) {
             throw new CuentaInactivaException("Operación denegada: La cuenta se encuentra inactiva/desactivada.");
         }
         return cuenta;
     }
 
-    // valida si se puede mover plata
-    private CuentaBancaria obtenerCuentaParaOperar(String numeroCuenta)
-            throws CuentaInactivaException, CuentaBloqueadaException {
+    private CuentaBancaria obtenerCuentaParaOperar(String numeroCuenta) throws CuentaInactivaException, CuentaBloqueadaException {
         CuentaBancaria cuenta = validarIngreso(numeroCuenta);
         if (cuenta.getEstado() == EstadoCuenta.BLOQUEADA) {
             throw new CuentaBloqueadaException("Cuenta BLOQUEADA: Puede consultar saldo, pero no mover fondos.");
@@ -51,31 +52,38 @@ public class CajeroService {
     // --- OPERACIONES PRINCIPALES ---
 
     public void depositar(String numeroCuenta, double monto) throws Exception {
-        // Usamos el que chequea BLOQUEO
         CuentaBancaria cuenta = obtenerCuentaParaOperar(numeroCuenta);
-        if (monto <= 0)
-            throw new IllegalArgumentException("Monto inválido.");
+        if (monto <= 0) throw new IllegalArgumentException("Monto inválido.");
 
         cuenta.setSaldo(cuenta.getSaldo() + monto);
         registrarMovimiento(cuenta, TipoTransaccion.DEPOSITO, monto, "Depósito en cajero");
     }
 
     public void extraer(String numeroCuenta, double monto) throws Exception {
-        // Usamos el que chequea BLOQUEO
         CuentaBancaria cuenta = obtenerCuentaParaOperar(numeroCuenta);
-        validarExtraccion(cuenta, monto);
+        
+        // 1. Validamos que tenga plata
+        validarFondos(cuenta, monto);
+        
+        // 2. Validamos que no se pase del limite diario (solo para extracciones)
+        validarLimiteExtraccionDiaria(numeroCuenta, monto);
 
+        // 3. Modificamos saldos y registros
         cuenta.setSaldo(cuenta.getSaldo() - monto);
+        
+        // 4. Sumamos al contador diario de esta cuenta
+        double extraidoHoy = extraccionesDiarias.getOrDefault(numeroCuenta, 0.0);
+        extraccionesDiarias.put(numeroCuenta, extraidoHoy + monto);
+
         registrarMovimiento(cuenta, TipoTransaccion.EXTRACCION, monto, "Extracción en cajero");
     }
 
     public void transferir(String cuentaOrigen, String cuentaDestino, double monto) throws Exception {
-        // Origen debe poder operar (no estar bloqueada)
         CuentaBancaria origen = obtenerCuentaParaOperar(cuentaOrigen);
-        // Destino solo debe existir y no estar inactiva
         CuentaBancaria destino = validarIngreso(cuentaDestino);
 
-        validarExtraccion(origen, monto);
+        // En transferencias SOLO validamos fondos, NO el limite del cajero
+        validarFondos(origen, monto);
 
         origen.setSaldo(origen.getSaldo() - monto);
         destino.setSaldo(destino.getSaldo() + monto);
@@ -85,42 +93,54 @@ public class CajeroService {
     }
 
     public double consultarSaldo(String numeroCuenta) throws CuentaInactivaException {
-        // Para consultar saldo solo pedimos validarIngreso (aunque esté bloqueada puede
-        // ver)
         CuentaBancaria cuenta = validarIngreso(numeroCuenta);
         registrarMovimiento(cuenta, TipoTransaccion.CONSULTA, 0, "Consulta de saldo");
         return cuenta.getSaldo();
     }
 
     public List<String> obtenerUltimosMovimientos(String numeroCuenta) throws CuentaInactivaException {
-        // Para ver historial solo pedimos validarIngreso
         CuentaBancaria cuenta = validarIngreso(numeroCuenta);
         List<String> historial = cuenta.getHistorialTransacciones();
         int fromIndex = Math.max(0, historial.size() - 10);
         return historial.subList(fromIndex, historial.size());
     }
 
-    // --- MÉTODOS PRIVADOS (De apoyo interno) ---
+    // --- METODOS PRIVADOS (De apoyo interno) ---
 
+    // Este metodo revisa si cambió de dia a las 00:00 para reiniciar los limites
+    private void verificarCambioDeDia() {
+        if (!LocalDate.now().equals(diaActual)) {
+            extraccionesDiarias.clear(); // Borramos el historial del día anterior
+            diaActual = LocalDate.now();
+        }
+    }
 
-
-    // Aplica las reglas estrictas de extracción del TP
-    private void validarExtraccion(CuentaBancaria cuenta, double monto)
-            throws SaldoInsuficienteException, LimiteExtraccionExcedidoException {
+    // Valida que el monto sea logico y que alcance el saldo (Se usa en Extracción y Transferencia)
+    private void validarFondos(CuentaBancaria cuenta, double monto) throws SaldoInsuficienteException {
         if (monto <= 0) {
             throw new IllegalArgumentException("El monto debe ser mayor a cero.");
         }
-        if (monto > 10000) { // Límite de $10.000 por operación [cite: 88]
-            throw new LimiteExtraccionExcedidoException(
-                    "Límite excedido: No puede operar más de $10,000 por transacción.");
-        }
-        if (cuenta.getSaldo() < monto) { // Saldo insuficiente [cite: 87]
+        if (cuenta.getSaldo() < monto) {
             throw new SaldoInsuficienteException("Saldo insuficiente. Su saldo actual es: $" + cuenta.getSaldo());
         }
     }
 
-    // Crea el objeto Transaccion y lo guarda en la cuenta usando el StringBuilder
-    // que armamos antes
+    // Valida el limite de 10.000 y calcula el remanente inteligente (Solo Extracción)
+    private void validarLimiteExtraccionDiaria(String numeroCuenta, double monto) throws LimiteExtraccionExcedidoException {
+        verificarCambioDeDia();
+        double extraidoHoy = extraccionesDiarias.getOrDefault(numeroCuenta, 0.0);
+        double limiteDiario = 10000.0;
+
+        if (extraidoHoy + monto > limiteDiario) {
+            double disponibleHoy = limiteDiario - extraidoHoy;
+            if (disponibleHoy <= 0) {
+                throw new LimiteExtraccionExcedidoException("Límite diario alcanzado. No puede extraer más dinero por hoy.");
+            } else {
+                throw new LimiteExtraccionExcedidoException("Límite excedido. Usted ya extrajo dinero hoy. Solo puede extraer $" + disponibleHoy + " más por hoy.");
+            }
+        }
+    }
+
     private void registrarMovimiento(CuentaBancaria cuenta, TipoTransaccion tipo, double monto, String descripcion) {
         Transaccion transaccion = new Transaccion(tipo, monto, descripcion);
         String registro = transaccion.formatearParaHistorial(cuenta.getSaldo());
