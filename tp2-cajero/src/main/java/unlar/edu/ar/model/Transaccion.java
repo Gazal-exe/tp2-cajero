@@ -46,8 +46,8 @@ public class Transaccion {
          // Usamos StringBuilder y el util de formato para mantener una salida consistente.
         StringBuilder sb = new StringBuilder();
         sb.append("[").append(fechaFormateada).append("] ")
-                .append(tipo.name()).append(": $").append(FormatoUtil.formatearMoneda(monto))
-                .append(" | Saldo: $").append(FormatoUtil.formatearMoneda(saldoResultante));
+                .append(tipo.name()).append(": ").append(FormatoUtil.formatearMoneda(monto))
+                .append(" | Saldo: ").append(FormatoUtil.formatearMoneda(saldoResultante));
 
         return sb.toString();
     }
