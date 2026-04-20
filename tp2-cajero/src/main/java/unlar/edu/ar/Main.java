@@ -9,21 +9,21 @@ public class Main {
         // 1. Inicializamos
         CajeroService service = new CajeroService();
 
-        // 2. Carga inicial de datos (Punto 4.12 y 130 del PDF)
+        // 2. Carga inicial de datos 
         // Creamos al menos 3 cuentas diferentes
-        service.agregarCuenta(new CuentaBancaria("101", "Lionel Messi", 50000.0));
-        service.agregarCuenta(new CuentaBancaria("102", "Angel Di Maria", 20000.0));
-        service.agregarCuenta(new CuentaBancaria("103", "Julian Alvarez", 5000.0));
+        service.agregarCuenta(new CuentaBancaria("101", "Almonacid Nahuel", 50000.0));
+        service.agregarCuenta(new CuentaBancaria("102", "Ibañez Yessica", 20000.0));
+        service.agregarCuenta(new CuentaBancaria("103", "Gonzalez Esteban", 5000.0));
 
-        // 3. Simulación automática de un día de operaciones (Punto 130)
+        // 3. Simulación automática de un día de operaciones
         // Ejecutamos 15 transacciones variadas para que el historial no esté vacío
         System.out.println(">>> EJECUTANDO SIMULACIÓN DE 15 TRANSACCIONES...");
         
         try {
-            // Operaciones de la Cuenta 101
-            service.depositar("101", 5000.0);         // 1
-            service.extraer("101", 2000.0);           // 2
-            service.consultarSaldo("101");            // 3
+            // Operaciones de cuenta Nahuel
+            service.depositar("101", 5000.0);         
+            service.extraer("101", 2000.0);           
+            service.consultarSaldo("101");            /
             service.transferir("101", "102", 1000.0); // 4
             
             // Operaciones de la Cuenta 102

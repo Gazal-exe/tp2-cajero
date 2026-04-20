@@ -105,7 +105,7 @@ public class MenuUI {
     private void consultarSaldo(String cuenta) throws Exception {
         double saldo = cajeroService.consultarSaldo(cuenta);
         // Requisito 2.4: Formato de moneda específico
-        System.out.println("💰 Su saldo actual es: " + formatearMoneda(saldo));
+        System.out.println("Su saldo actual es: " + formatearMoneda(saldo));
     }
 
     private void verHistorial(String cuenta) throws Exception {
