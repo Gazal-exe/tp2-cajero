@@ -18,7 +18,7 @@ public class CajeroService {
         this.cuentas = new HashMap<>();
     }
 
-    // Metodo para cargar cuentas al inicio del día (como pide el Main)
+    // Metodo para cargar cuentas al inicio del dia (como pide el Main)
     public void agregarCuenta(CuentaBancaria cuenta) {
         cuentas.put(cuenta.getNumeroCuenta(), cuenta);
     }
