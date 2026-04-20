@@ -33,7 +33,7 @@ public class Main {
             service.depositar("101", 100.0); service.extraer("102", 100.0);
             service.transferir("102", "101", 50.0);
 
-            System.out.println("✅ Simulación finalizada con éxito.\n");
+            System.out.println("Simulación finalizada con éxito.\n");
         } catch (Exception e) {
             System.err.println("Error en simulación: " + e.getMessage());
         }
@@ -44,7 +44,7 @@ public class Main {
         // Walter ni siquiera puede entrar
         c4.setEstado(EstadoCuenta.INACTIVA);
 
-        // 5. Lanzamos el Menú
+        // 5. Lanzamos el Menu
         MenuUI menu = new MenuUI(service);
         menu.iniciar();
     }
