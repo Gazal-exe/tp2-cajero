@@ -1,5 +1,7 @@
 package unlar.edu.ar.model;
 
+import unlar.edu.ar.util.FormatoUtil;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -41,11 +43,11 @@ public class Transaccion {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String fechaFormateada = fechaHora.format(formatter);
 
-        // Armamos el String usando StringBuilder (Punto 3.11)
+         // Usamos StringBuilder y el util de formato para mantener una salida consistente.
         StringBuilder sb = new StringBuilder();
         sb.append("[").append(fechaFormateada).append("] ")
-                .append(tipo.name()).append(": $").append(String.format("%.2f", monto))
-                .append(" | Saldo: $").append(String.format("%.2f", saldoResultante));
+                .append(tipo.name()).append(": $").append(FormatoUtil.formatearMoneda(monto))
+                .append(" | Saldo: $").append(FormatoUtil.formatearMoneda(saldoResultante));
 
         return sb.toString();
     }
