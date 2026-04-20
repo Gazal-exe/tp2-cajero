@@ -7,14 +7,14 @@ public class CuentaBancaria {
     private final String numeroCuenta; 
     private double saldo;
     private String titular;
-    private boolean activa;
+    private EstadoCuenta estado;
     private ArrayList<String> historialTransacciones;
 
     public CuentaBancaria(String numeroCuenta, String titular, double saldoInicial) {
         this.numeroCuenta = numeroCuenta;
         this.titular = titular;
         this.saldo = saldoInicial;
-        this.activa = true; // nace activa por defecto
+        this.estado = EstadoCuenta.ACTIVA; // nace activa por defecto
         this.historialTransacciones = new ArrayList<>();
         
         // registramos primer movimiento
@@ -34,8 +34,8 @@ public class CuentaBancaria {
         return titular;
     }
 
-    public boolean isActiva() {
-        return activa;
+    public EstadoCuenta getEstado() {
+        return this.estado;
     }
 
     public ArrayList<String> getHistorialTransacciones() {
@@ -53,8 +53,8 @@ public class CuentaBancaria {
         this.titular = titular;
     }
 
-    public void setActiva(boolean activa) {
-        this.activa = activa;
+    public void setEstado(EstadoCuenta estado) {
+        this.estado = estado;
     }
 
     // Metodo toString() informativo
@@ -64,7 +64,7 @@ public class CuentaBancaria {
                 "numeroCuenta='" + numeroCuenta + '\'' +
                 ", titular='" + titular + '\'' +
                 ", saldo=$" + saldo +
-                ", activa=" + (activa ? "Sí" : "No") +
+                ", estado=" + this.estado +
                 '}';
     }
 }

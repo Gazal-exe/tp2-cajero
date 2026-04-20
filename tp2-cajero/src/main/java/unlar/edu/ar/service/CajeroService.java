@@ -1,6 +1,7 @@
 package unlar.edu.ar.service;
 
 import unlar.edu.ar.model.CuentaBancaria;
+import unlar.edu.ar.model.EstadoCuenta;
 import unlar.edu.ar.model.TipoTransaccion;
 import unlar.edu.ar.model.Transaccion;
 import unlar.edu.ar.exception.*;
@@ -23,88 +24,85 @@ public class CajeroService {
         cuentas.put(cuenta.getNumeroCuenta(), cuenta);
     }
 
+    // valida cuentabancaria y estado, y devuelve la cuenta si todo ok. Si no, tira
+    // la excepcion correspondiente
+    private CuentaBancaria validarIngreso(String numeroCuenta) throws CuentaInactivaException {
+        CuentaBancaria cuenta = cuentas.get(numeroCuenta);
+        if (cuenta == null) {
+            throw new IllegalArgumentException("La cuenta número " + numeroCuenta + " no existe.");
+        }
+        // CORRECCIÓN AQUÍ: Si es igual a INACTIVA, rebota.
+        if (cuenta.getEstado() == EstadoCuenta.INACTIVA) {
+            throw new CuentaInactivaException("Operación denegada: La cuenta se encuentra inactiva/desactivada.");
+        }
+        return cuenta;
+    }
+
+    // valida si se puede mover plata
+    private CuentaBancaria obtenerCuentaParaOperar(String numeroCuenta)
+            throws CuentaInactivaException, CuentaBloqueadaException {
+        CuentaBancaria cuenta = validarIngreso(numeroCuenta);
+        if (cuenta.getEstado() == EstadoCuenta.BLOQUEADA) {
+            throw new CuentaBloqueadaException("Cuenta BLOQUEADA: Puede consultar saldo, pero no mover fondos.");
+        }
+        return cuenta;
+    }
+
     // --- OPERACIONES PRINCIPALES ---
 
-    public void depositar(String numeroCuenta, double monto) throws CuentaInactivaException {
-        if (monto <= 0) {
-            throw new IllegalArgumentException("El monto a depositar debe ser mayor a cero.");
-        }
-        CuentaBancaria cuenta = obtenerCuentaValidada(numeroCuenta);
+    public void depositar(String numeroCuenta, double monto) throws Exception {
+        // Usamos el que chequea BLOQUEO
+        CuentaBancaria cuenta = obtenerCuentaParaOperar(numeroCuenta);
+        if (monto <= 0)
+            throw new IllegalArgumentException("Monto inválido.");
 
-        // Actualizamos saldo
         cuenta.setSaldo(cuenta.getSaldo() + monto);
-
-        // Registramos
         registrarMovimiento(cuenta, TipoTransaccion.DEPOSITO, monto, "Depósito en cajero");
     }
 
-    public void extraer(String numeroCuenta, double monto)
-            throws CuentaInactivaException, SaldoInsuficienteException, LimiteExtraccionExcedidoException {
-        CuentaBancaria cuenta = obtenerCuentaValidada(numeroCuenta);
-
-        // Validamos las reglas de negocio antes de tocar la plata
+    public void extraer(String numeroCuenta, double monto) throws Exception {
+        // Usamos el que chequea BLOQUEO
+        CuentaBancaria cuenta = obtenerCuentaParaOperar(numeroCuenta);
         validarExtraccion(cuenta, monto);
 
-        // Actualizamos saldo
         cuenta.setSaldo(cuenta.getSaldo() - monto);
-
-        // Registramos
         registrarMovimiento(cuenta, TipoTransaccion.EXTRACCION, monto, "Extracción en cajero");
     }
 
-    // La transferencia es un poco mas compleja porque involucra DOS cuentas,
-    // pero la logica es la misma: validamos TODO antes de tocar la plata.
-    // O pasa todo, o no pasa nada
-    public void transferir(String cuentaOrigen, String cuentaDestino, double monto)
-            throws CuentaInactivaException, SaldoInsuficienteException, LimiteExtraccionExcedidoException {
-        // Transaccion atomica: validamos TODO antes de modificar nada
-        CuentaBancaria origen = obtenerCuentaValidada(cuentaOrigen);
-        CuentaBancaria destino = obtenerCuentaValidada(cuentaDestino);
+    public void transferir(String cuentaOrigen, String cuentaDestino, double monto) throws Exception {
+        // Origen debe poder operar (no estar bloqueada)
+        CuentaBancaria origen = obtenerCuentaParaOperar(cuentaOrigen);
+        // Destino solo debe existir y no estar inactiva
+        CuentaBancaria destino = validarIngreso(cuentaDestino);
+
         validarExtraccion(origen, monto);
 
-        // Si llegó hasta acá sin tirar Exception, procedemos a mover la plata
         origen.setSaldo(origen.getSaldo() - monto);
         destino.setSaldo(destino.getSaldo() + monto);
 
-        // Registramos en el historial de ambas cuentas
         registrarMovimiento(origen, TipoTransaccion.TRANSFERENCIA, monto, "Transferencia enviada a " + cuentaDestino);
         registrarMovimiento(destino, TipoTransaccion.TRANSFERENCIA, monto, "Transferencia recibida de " + cuentaOrigen);
     }
 
     public double consultarSaldo(String numeroCuenta) throws CuentaInactivaException {
-        CuentaBancaria cuenta = obtenerCuentaValidada(numeroCuenta);
-        // La consulta de saldo no modifica el estado ni descuenta dinero [cite: 96]
+        // Para consultar saldo solo pedimos validarIngreso (aunque esté bloqueada puede
+        // ver)
+        CuentaBancaria cuenta = validarIngreso(numeroCuenta);
         registrarMovimiento(cuenta, TipoTransaccion.CONSULTA, 0, "Consulta de saldo");
         return cuenta.getSaldo();
     }
 
-    // funcion obtenerUltimosMovimientos
     public List<String> obtenerUltimosMovimientos(String numeroCuenta) throws CuentaInactivaException {
-        CuentaBancaria cuenta = obtenerCuentaValidada(numeroCuenta);
+        // Para ver historial solo pedimos validarIngreso
+        CuentaBancaria cuenta = validarIngreso(numeroCuenta);
         List<String> historial = cuenta.getHistorialTransacciones();
-
-        // Devolvemos solo las últimas 10 transacciones
         int fromIndex = Math.max(0, historial.size() - 10);
         return historial.subList(fromIndex, historial.size());
     }
 
     // --- MÉTODOS PRIVADOS (De apoyo interno) ---
 
-    // Este metodo centraliza la validación para no repetir codigo:
-    // En lugar de chequear si la cuenta está activa en todos los metodos,
-    // armamos este. Si en el futuro el banco pide otra validacion, solo tocamos ese
-    // pedacito
 
-    private CuentaBancaria obtenerCuentaValidada(String numeroCuenta) throws CuentaInactivaException {
-        CuentaBancaria cuenta = cuentas.get(numeroCuenta);
-        if (cuenta == null) {
-            throw new IllegalArgumentException("La cuenta número " + numeroCuenta + " no existe.");
-        }
-        if (!cuenta.isActiva()) {
-            throw new CuentaInactivaException("Operación denegada: La cuenta se encuentra inactiva.");
-        }
-        return cuenta;
-    }
 
     // Aplica las reglas estrictas de extracción del TP
     private void validarExtraccion(CuentaBancaria cuenta, double monto)
