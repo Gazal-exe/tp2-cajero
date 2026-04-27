@@ -30,6 +30,10 @@ public class CajeroService {
         cuentas.put(cuenta.getNumeroCuenta(), cuenta);
     }
 
+    public void validarAcceso(String numeroCuenta) throws CuentaInactivaException {
+        validarIngreso(numeroCuenta);
+    }
+
     private CuentaBancaria validarIngreso(String numeroCuenta) throws CuentaInactivaException {
         CuentaBancaria cuenta = cuentas.get(numeroCuenta);
         if (cuenta == null) {

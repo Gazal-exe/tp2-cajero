@@ -1,9 +1,9 @@
 package unlar.edu.ar.ui;
 
 import unlar.edu.ar.service.CajeroService;
+import unlar.edu.ar.util.FormatoUtil;
 import java.util.InputMismatchException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Scanner;
 
 public class MenuUI {
@@ -36,7 +36,7 @@ public class MenuUI {
 
             // Validamos ingreso antes de entrar al menú de esa cuenta
             try {
-                cajeroService.consultarSaldo(cuentaActual); // Usamos una consulta rápida para validar existencia/estado
+                cajeroService.validarAcceso(cuentaActual);
                 System.out.println("Sesión iniciada.");
             } catch (Exception e) {
                 System.out.println("ACCESO DENEGADO: " + e.getMessage());
@@ -140,7 +140,7 @@ public class MenuUI {
 
     private void consultarSaldo(String cuenta) throws Exception {
         double saldo = cajeroService.consultarSaldo(cuenta);
-        System.out.println("Su saldo actual es: " + formatearMoneda(saldo));
+        System.out.println("Su saldo actual es: " + FormatoUtil.formatearMoneda(saldo));
     }
 
     private void verHistorial(String cuenta) throws Exception {
@@ -152,7 +152,4 @@ public class MenuUI {
             historial.forEach(System.out::println);
     }
 
-    private String formatearMoneda(double monto) {
-        return String.format(Locale.US, "$%,.2f", monto);
-    }
 }
